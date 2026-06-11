@@ -1341,3 +1341,388 @@ facilityFormHTML(k);
 </body>
 
 </html>
+<script>
+
+function showFacility(id,btn){
+
+  document.querySelectorAll('.facilityForm').forEach(function(f){
+
+    f.classList.remove('active');
+
+  });
+
+  document.getElementById(id).classList.add('active');
+
+  document.querySelectorAll('.tabbtn').forEach(function(b){
+
+    b.classList.remove('active');
+
+  });
+
+  btn.classList.add('active');
+
+}
+
+function startMatch(){
+
+  const required = [
+
+    "name",
+
+    "area",
+
+    "serviceType",
+
+    "date",
+
+    "budget",
+
+    "message"
+
+  ];
+
+  for(const id of required){
+
+    if(!document.getElementById(id).value.trim()){
+
+      alert("未入力の項目があります。すべて入力してください。");
+
+      return;
+
+    }
+
+  }
+
+  const checks = [
+
+    "idcheck",
+
+    "terms",
+
+    "ban",
+
+    "privacy"
+
+  ];
+
+  for(const id of checks){
+
+    if(!document.getElementById(id).checked){
+
+      alert("すべての同意項目にチェックを入れてください。");
+
+      return;
+
+    }
+
+  }
+
+  const name = document.getElementById("name").value;
+
+  const area = document.getElementById("area").value;
+
+  const serviceType = document.getElementById("serviceType").value;
+
+  const budget = document.getElementById("budget").value;
+
+  const message = document.getElementById("message").value;
+
+  const result = document.getElementById("resultBox");
+
+  result.style.display = "block";
+
+  result.innerHTML = `
+
+    <h3>AI比較サポート結果</h3>
+
+    <p><strong>${name}様のご希望条件を整理しました。</strong></p>
+
+    <p>
+
+      希望地域：${area}<br>
+
+      希望サービス：${serviceType}<br>
+
+      希望料金帯：${budget}
+
+    </p>
+
+    <p><strong>相談内容：</strong><br>${message}</p>
+
+    <p>
+
+      比較時は「地域」「送迎の有無」「介護度への対応」「医療対応」
+
+      「認知症対応」「費用」「空き状況」「見学可否」を
+
+      直接確認することをおすすめします。
+
+    </p>
+
+    <button type="button" class="btn" onclick="runAIMatching()">
+
+      登録施設とマッチング表示
+
+    </button>
+
+    <p class="small">
+
+      ※本サイトは情報比較と条件整理を支援するもので、
+
+      契約成立・入居可否・利用開始を保証するものではありません。
+
+    </p>
+
+  `;
+
+  result.scrollIntoView({behavior:"smooth"});
+
+}
+
+function registerFacility(key){
+
+  const ids = [
+
+    `${key}_name`,
+
+    `${key}_area`,
+
+    `${key}_person`,
+
+    `${key}_email`,
+
+    `${key}_tel`,
+
+    `${key}_features`
+
+  ];
+
+  for(const id of ids){
+
+    if(!document.getElementById(id).value.trim()){
+
+      alert("施設登録フォームに未入力があります。");
+
+      return;
+
+    }
+
+  }
+
+  const agreeIds = [
+
+    `${key}_agree1`,
+
+    `${key}_agree2`,
+
+    `${key}_agree3`
+
+  ];
+
+  for(const id of agreeIds){
+
+    if(!document.getElementById(id).checked){
+
+      alert("施設側の同意項目すべてにチェックを入れてください。");
+
+      return;
+
+    }
+
+  }
+
+  const f = {
+
+    type: serviceNames[key],
+
+    name: document.getElementById(`${key}_name`).value,
+
+    area: document.getElementById(`${key}_area`).value,
+
+    price: document.getElementById(`${key}_price`).value,
+
+    features: document.getElementById(`${key}_features`).value,
+
+    vacancy: document.getElementById(`${key}_vacancy`).value,
+
+    plan: document.getElementById(`${key}_plan`).value
+
+  };
+
+  facilities.push(f);
+
+  const box = document.getElementById("facilityResult");
+
+  box.style.display = "block";
+
+  box.innerHTML = `
+
+    <h3>施設登録デモ完了</h3>
+
+    <p><strong>${f.name}</strong> を登録しました。</p>
+
+    <p>
+
+      種別：${f.type}<br>
+
+      地域：${f.area}<br>
+
+      料金帯：${f.price}<br>
+
+      掲載プラン：${f.plan}
+
+    </p>
+
+    <p class="small">
+
+      ※このHTML内でのデモ登録です。
+
+      実運用ではデータベース保存が必要です。
+
+    </p>
+
+  `;
+
+  box.scrollIntoView({behavior:"smooth"});
+
+}
+
+function scoreFacility(f,userArea,userType,userBudget){
+
+  let score = 40;
+
+  if(f.type === userType){
+
+    score += 30;
+
+  }
+
+  const cleanUserArea = userArea.replace(/[都道府県市区町村\s]/g,"");
+
+  const cleanFacilityArea = f.area.replace(/[都道府県市区町村\s]/g,"");
+
+  if(cleanUserArea && f.area.includes(cleanUserArea)){
+
+    score += 10;
+
+  }
+
+  if(cleanFacilityArea && userArea.includes(cleanFacilityArea)){
+
+    score += 10;
+
+  }
+
+  if(f.price === userBudget){
+
+    score += 15;
+
+  }
+
+  if(f.vacancy.includes("空き")){
+
+    score += 5;
+
+  }
+
+  if(f.plan.includes("プレミアム")){
+
+    score += 5;
+
+  }
+
+  return Math.min(score,98);
+
+}
+
+function runAIMatching(){
+
+  const userArea = document.getElementById("area").value || "";
+
+  const userType = document.getElementById("serviceType").value || "";
+
+  const userBudget = document.getElementById("budget").value || "";
+
+  if(!userType){
+
+    alert("先に利用者登録フォームで希望サービスを選んでください。");
+
+    return;
+
+  }
+
+  const ranked = facilities
+
+    .map(function(f){
+
+      return {
+
+        ...f,
+
+        score: scoreFacility(f,userArea,userType,userBudget)
+
+      };
+
+    })
+
+    .sort(function(a,b){
+
+      return b.score - a.score;
+
+    });
+
+  const box = document.getElementById("matchList");
+
+  box.style.display = "block";
+
+  box.innerHTML =
+
+    `<h3>AIマッチング候補</h3>` +
+
+    ranked.map(function(f){
+
+      return `
+
+        <div class="match-card">
+
+          <div class="score">${f.score}%</div>
+
+          <strong>${f.name}</strong>
+
+          <p>
+
+            種別：${f.type}<br>
+
+            地域：${f.area}<br>
+
+            料金帯：${f.price}<br>
+
+            空き状況：${f.vacancy}<br>
+
+            特徴：${f.features}
+
+          </p>
+
+          <p class="small">
+
+            掲載プラン：${f.plan}<br>
+
+            ※契約・料金・空き状況は必ず施設へ直接確認してください。
+
+          </p>
+
+        </div>
+
+      `;
+
+    }).join("");
+
+  box.scrollIntoView({behavior:"smooth"});
+
+}
+
+</script>
+
+</body>
+
+</html>
